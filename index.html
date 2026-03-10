@@ -66,7 +66,7 @@ function SetupScreen() {
       const r = await fetch(url.trim() + '?action=ping');
       const d = await r.json();
       if (d.status === 'ok') {
-        localStorage.setItem('dgw-api-url', url.trim());
+        localStorage.setItem(URL_KEY, url.trim());
         setSuccess(true);
         setTimeout(() => window.location.reload(), 1000);
       } else {
@@ -74,7 +74,7 @@ function SetupScreen() {
       }
     } catch(e) {
       // no-cors mode won't let us read response, try saving URL anyway
-      localStorage.setItem('dgw-api-url', url.trim());
+      localStorage.setItem(URL_KEY, url.trim());
       setSuccess(true);
       setTimeout(() => window.location.reload(), 1000);
     }
@@ -135,7 +135,7 @@ function SetupScreen() {
 // ── SYNC BADGE ──
 function SyncBadge({saving}) {
   const [show, setShow] = useState(false);
-  const resetSetup = () => { if(confirm('This will disconnect from Google Sheets. You will need to enter the URL again. Continue?')) { localStorage.removeItem('dgw-api-url'); window.location.reload(); } };
+  const resetSetup = () => { if(confirm('This will disconnect from Google Sheets. You will need to enter the URL again. Continue?')) { localStorage.removeItem(URL_KEY); window.location.reload(); } };
   return (
     <div className="sync-badge">
       <div className={'sync-dot ' + (saving ? 'saving' : 'ok')}></div>
@@ -265,7 +265,7 @@ function App(){
 
 // ── WRAPPER ──
 function Wrapper() {
-  const hasUrl = !!localStorage.getItem('dgw-api-url');
+  const hasUrl = !!localStorage.getItem(URL_KEY);
   if (!hasUrl) return React.createElement(SetupScreen);
   return React.createElement(App);
 }
