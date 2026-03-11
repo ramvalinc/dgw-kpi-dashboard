@@ -18,6 +18,20 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.12.7/Recharts.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script>
+  firebase.initializeApp({
+    apiKey: "AIzaSyBrwCJLnJ8H8ZQmlQWBpRk3nPrUxihET4g",
+    authDomain: "dgw-kpi-dashboard.firebaseapp.com",
+    databaseURL: "https://dgw-kpi-dashboard-default-rtdb.firebaseio.com",
+    projectId: "dgw-kpi-dashboard",
+    storageBucket: "dgw-kpi-dashboard.firebasestorage.app",
+    messagingSenderId: "281141964642",
+    appId: "1:281141964642:web:f4b58978fd89587bec863b"
+  });
+  const db = firebase.database();
+</script>
 </head>
 <body>
 <div id="root"></div>
@@ -54,8 +68,8 @@ function App(){
   const[aD,setAD]=useState({});const[fE,setFE]=useState({});const[mo,setMo]=useState('2026-03');const[dy,setDy]=useState(1);const[vw,setVw]=useState('entry');const[ld,setLd]=useState(true);const[sv,setSv]=useState(false);const[sOK,setSOK]=useState(false);const[dOK,setDOK]=useState(false);
   const mL=useMemo(()=>{const[y,m]=mo.split('-');return new Date(y,m-1).toLocaleDateString('en-US',{month:'long',year:'numeric'});},[mo]);
   const dim=useMemo(()=>{const[y,m]=mo.split('-');return new Date(y,m,0).getDate();},[mo]);
-  useEffect(()=>{(async()=>{try{const r=localStorage.getItem(SK);if(r){const p=JSON.parse(r);setAD(p.days||{});setFE(p.fixed||{});}}catch(e){}setLd(false);})();},[]);
-  const save=useCallback(async(nd,nf)=>{setSv(true);const d=nd!==undefined?nd:aD;const f=nf!==undefined?nf:fE;if(nd!==undefined)setAD(d);if(nf!==undefined)setFE(f);try{localStorage.setItem(SK,JSON.stringify({days:d,fixed:f}));}catch(e){}setSv(false);},[aD,fE]);
+  useEffect(()=>{const ref=db.ref(SK);const handler=snap=>{const data=snap.val();if(data){setAD(data.days||{});setFE(data.fixed||{});}setLd(false);};ref.on('value',handler);return()=>ref.off('value',handler);},[]);
+  const save=useCallback(async(nd,nf)=>{setSv(true);const curDk=`${mo}-${String(dy).padStart(2,'0')}`;const d=nd!==undefined?nd:aD;const f=nf!==undefined?nf:fE;if(nd!==undefined)setAD(d);if(nf!==undefined)setFE(f);try{if(nd!==undefined){if(d[curDk]){await db.ref(SK+'/days/'+curDk).set(d[curDk]);}else{await db.ref(SK+'/days/'+curDk).remove();}}if(nf!==undefined){await db.ref(SK+'/fixed/'+mo).set(f[mo]||null);}}catch(e){console.error('Firebase save error:',e);}setSv(false);},[aD,fE,mo,dy]);
   const dk=`${mo}-${String(dy).padStart(2,'0')}`;const dd=aD[dk]||eD();const gMF=useCallback(m=>fE[m]||dF(),[fE]);
   const fdA=useMemo(()=>{const mf=gMF(mo);let dc=0,bd=0,gr=0;Object.entries(FA).forEach(([k,a])=>{const v=(mf[k]||0)/dim;dc+=v*a.dc;bd+=v*a.bd;gr+=v*a.gr;});return {dc,bd,gr};},[mo,dim,gMF]);
   const uD=(s,k,v)=>{const n={...aD};if(!n[dk])n[dk]=eD();n[dk]={...n[dk],[s]:{...n[dk][s],[k]:v}};save(n);};
