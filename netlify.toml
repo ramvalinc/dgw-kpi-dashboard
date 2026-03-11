@@ -1,3 +1,32 @@
 [build]
   publish = "."
-  command = ""
+
+# Multi-location routing — each path serves the same index.html
+# The app reads window.location.pathname to determine the active location
+
+[[redirects]]
+  from = "/doral/*"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/westmia/*"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/hialeah/*"
+  to = "/index.html"
+  status = 200
+
+# Root redirects to Doral by default
+[[redirects]]
+  from = "/"
+  to = "/doral/"
+  status = 301
+
+# Fallback for any other path
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
