@@ -49,97 +49,52 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
 
 <script type="text/babel">
-const { useState, useEffect, useCallback, useMemo } = React;
+const { useState, useEffect, useCallback, useMemo, useRef } = React;
 const { BarChart, Bar, LineChart, Line, AreaChart, Area, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart, ReferenceLine } = Recharts;
 
 // ── SETUP SCREEN ──
-function SetupScreen() {
-  const [url, setUrl] = useState('');
-  const [testing, setTesting] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
-
-  const testAndSave = async () => {
-    if (!url.trim()) { setError('Please paste the URL'); return; }
-    setTesting(true); setError('');
-    try {
-      const r = await fetch(url.trim() + '?action=ping');
-      const d = await r.json();
-      if (d.status === 'ok') {
-        localStorage.setItem(URL_KEY, url.trim());
-        setSuccess(true);
-        setTimeout(() => window.location.reload(), 1000);
-      } else {
-        setError('Connected but got unexpected response. Check your Apps Script.');
-      }
-    } catch(e) {
-      // no-cors mode won't let us read response, try saving URL anyway
-      localStorage.setItem(URL_KEY, url.trim());
-      setSuccess(true);
-      setTimeout(() => window.location.reload(), 1000);
-    }
+function SetupScreen(){
+  const[url,setUrl]=useState('');const[key,setKey]=useState('');const[testing,setTesting]=useState(false);const[error,setError]=useState('');const[success,setSuccess]=useState(false);
+  const testAndSave=async()=>{
+    if(!url.trim()||!key.trim()){setError('Please fill in both fields');return;}
+    setTesting(true);setError('');
+    try{
+      const cleanUrl=url.trim().replace(/\/$/,'');
+      const r=await fetch(cleanUrl+'/rest/v1/kpi_entries?limit=1',{headers:{'apikey':key.trim(),'Authorization':'Bearer '+key.trim()}});
+      if(r.status===200||r.status===206){
+        localStorage.setItem(SB_URL_KEY,cleanUrl);localStorage.setItem(SB_KEY_KEY,key.trim());
+        setSuccess(true);setTimeout(()=>window.location.reload(),1000);
+      }else{setError('Could not connect (status '+r.status+'). Check your URL and API key.');}
+    }catch(e){setError('Connection failed. Make sure the URL is correct.');}
     setTesting(false);
   };
-
-  return (
-    <div className="setup-container">
-      <div className="setup-box">
-        <div style={{textAlign:'center',marginBottom:20}}>
-          <div style={{fontSize:48}}>&#128054;</div>
-          <h1>Doggies Gone Wild</h1>
-          <p style={{color:'#f0f4f8',fontSize:16,margin:'4px 0 0'}}>KPI Dashboard — First Time Setup</p>
-        </div>
-        <p>Connect to your Google Sheet to share data across all devices and staff. Follow these steps:</p>
-
-        <div className="step">
-          <span className="step-num">1</span>
-          <span className="step-text">Open <b>Google Sheets</b> and create a new blank spreadsheet</span>
-        </div>
-        <div className="step">
-          <span className="step-num">2</span>
-          <span className="step-text">Go to <b>Extensions → Apps Script</b></span>
-        </div>
-        <div className="step">
-          <span className="step-num">3</span>
-          <span className="step-text">Delete the existing code. Paste the Apps Script code (provided separately)</span>
-        </div>
-        <div className="step">
-          <span className="step-num">4</span>
-          <span className="step-text">Click <b>Deploy → New deployment → Web app</b></span>
-        </div>
-        <div className="step">
-          <span className="step-num">5</span>
-          <span className="step-text">Set <b>"Execute as: Me"</b> and <b>"Who has access: Anyone"</b> → Deploy</span>
-        </div>
-        <div className="step">
-          <span className="step-num">6</span>
-          <span className="step-text">Copy the <b>Web App URL</b> and paste it below</span>
-        </div>
-
-        <div style={{marginTop:20}}>
-          <input type="text" value={url} onChange={e => setUrl(e.target.value)}
-            placeholder="Paste your Google Apps Script Web App URL here..."
-            onKeyDown={e => e.key === 'Enter' && testAndSave()} />
-          {error && <div style={{color:'#ff6b6b',fontSize:13,marginBottom:8}}>{error}</div>}
-          {success && <div style={{color:'#4caf50',fontSize:13,marginBottom:8}}>Connected! Loading dashboard...</div>}
-          <button onClick={testAndSave} disabled={testing}>
-            {testing ? 'Connecting...' : 'Connect & Launch Dashboard'}
-          </button>
-          <div className="warn">Each staff member only needs to do this once on their device. The URL is saved in the browser.</div>
-        </div>
+  return(
+    <div className="setup-container"><div className="setup-box">
+      <div style={{textAlign:'center',marginBottom:20}}><div style={{fontSize:48}}>&#128054;</div><h1>Doggies Gone Wild</h1><p style={{color:'#f0f4f8',fontSize:16,margin:'4px 0 0'}}>KPI Dashboard — {LOC_LABEL[LOCATION]} — Setup</p></div>
+      <p>Connect this device to your Supabase database to sync data across all staff and locations.</p>
+      <div className="step"><span className="step-num">1</span><span className="step-text">Go to <b>supabase.com</b>, open your project → <b>Settings → API</b></span></div>
+      <div className="step"><span className="step-num">2</span><span className="step-text">Copy the <b>Project URL</b> (looks like https://xxxxx.supabase.co)</span></div>
+      <div className="step"><span className="step-num">3</span><span className="step-text">Copy the <b>anon / public</b> API key from the same page</span></div>
+      <div className="step"><span className="step-num">4</span><span className="step-text">Paste both below and click Connect</span></div>
+      <div style={{marginTop:20}}>
+        <input type="text" value={url} onChange={e=>setUrl(e.target.value)} placeholder="Project URL (https://xxxxx.supabase.co)" onKeyDown={e=>e.key==='Enter'&&testAndSave()}/>
+        <input type="text" value={key} onChange={e=>setKey(e.target.value)} placeholder="Anon / Public Key (eyJ...)" onKeyDown={e=>e.key==='Enter'&&testAndSave()}/>
+        {error&&<div style={{color:'#ff6b6b',fontSize:13,marginBottom:8}}>{error}</div>}
+        {success&&<div style={{color:'#4caf50',fontSize:13,marginBottom:8}}>Connected! Loading dashboard...</div>}
+        <button onClick={testAndSave} disabled={testing}>{testing?'Connecting...':'Connect & Launch Dashboard'}</button>
+        <div className="warn">Only needs to be done once per device. Credentials are saved locally in the browser.</div>
       </div>
-    </div>
+    </div></div>
   );
 }
 
 // ── SYNC BADGE ──
-function SyncBadge({saving}) {
-  const [show, setShow] = useState(false);
-  const resetSetup = () => { if(confirm('This will disconnect from Google Sheets. You will need to enter the URL again. Continue?')) { localStorage.removeItem(URL_KEY); window.location.reload(); } };
-  return (
+function SyncBadge({saving}){
+  const resetSetup=()=>{if(confirm('Disconnect from Supabase? You will need to enter credentials again.')){localStorage.removeItem(SB_URL_KEY);localStorage.removeItem(SB_KEY_KEY);window.location.reload();}};
+  return(
     <div className="sync-badge">
-      <div className={'sync-dot ' + (saving ? 'saving' : 'ok')}></div>
-      {saving ? 'Syncing...' : 'Connected to Google Sheets'}
+      <div className={'sync-dot '+(saving?'saving':'ok')}></div>
+      {saving?'Syncing...':'Connected to Supabase'}
       <span onClick={resetSetup} className="reset-link" style={{marginTop:0,marginLeft:8}}>Reset</span>
     </div>
   );
@@ -160,7 +115,8 @@ const fmt2=n=>'$'+Number(n||0).toLocaleString('en-US',{minimumFractionDigits:2,m
 const pct=n=>((n||0)*100).toFixed(1)+'%';
 const LOCATION=(()=>{const p=window.location.pathname;if(p.startsWith('/westmia'))return 'westmia';if(p.startsWith('/hialeah'))return 'hialeah';return 'doral';})();
 const LOC_LABEL={doral:'Doral',westmia:'West Miami',hialeah:'Hialeah'};
-const SK='dgw-kpi-v2-'+LOCATION; const URL_KEY='dgw-api-url-'+LOCATION;const PW='m16177581';
+const SK='dgw-kpi-v2-'+LOCATION;const SB_URL_KEY='dgw-sb-url-'+LOCATION;const SB_KEY_KEY='dgw-sb-key-'+LOCATION;const PW='m16177581';
+function sbClient(){const url=localStorage.getItem(SB_URL_KEY);const key=localStorage.getItem(SB_KEY_KEY);if(!url||!key)return null;const h={'apikey':key,'Authorization':'Bearer '+key,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'};return{async getEntries(month){const[y,m]=month.split('-');const last=new Date(+y,+m,0).getDate();const r=await fetch(`${url}/rest/v1/kpi_entries?location=eq.${LOCATION}&entry_date=gte.${month}-01&entry_date=lte.${month}-${String(last).padStart(2,'0')}&select=entry_date,data,locked`,{headers:h});return r.ok?r.json():[];},async upsertEntry(date,data,locked){await fetch(`${url}/rest/v1/kpi_entries`,{method:'POST',headers:h,body:JSON.stringify({location:LOCATION,entry_date:date,data,locked})});},async deleteEntry(date){const dh={...h,'Prefer':''};await fetch(`${url}/rest/v1/kpi_entries?location=eq.${LOCATION}&entry_date=eq.${date}`,{method:'DELETE',headers:dh});},async getFixed(month){const r=await fetch(`${url}/rest/v1/fixed_expenses?location=eq.${LOCATION}&month=eq.${month}&select=data`,{headers:h});return r.ok?r.json():[];},async upsertFixed(month,data){await fetch(`${url}/rest/v1/fixed_expenses`,{method:'POST',headers:h,body:JSON.stringify({location:LOCATION,month,data})});},async getCostCenters(){const r=await fetch(`${url}/rest/v1/cost_centers?location=eq.${LOCATION}&select=expense_key,label,dc_pct,bd_pct,gr_pct`,{headers:h});return r.ok?r.json():[]}};}
 const eD=()=>{const d={daycare:{},boarding:{},grooming:{},grXtra:{},staffBath:{},staffXtra:{},labor:{pp:0,bp:0,hotel:0,reception:0,bather:0,rate:15},retail:{sales:0,expired:0},leads:{calls:0,callsBooked:0,tours:0,toursBooked:0},complaints:{daycare:[],grooming:[],boarding:[]},dogFights:{count:0,notes:[]},reviews:{star1:0,star2:0,star3:0,star4:0,star5:0},vetExpense:{daycare:0,boarding:0,grooming:0},refunds:0,discounts:0,locked:false};Object.keys(DAYCARE_RATES).forEach(k=>d.daycare[k]=0);Object.keys(BOARDING_RATES).forEach(k=>d.boarding[k]=0);Object.keys(GROOMING_RATES).forEach(k=>d.grooming[k]=0);Object.keys(EXTRA_RATES).forEach(k=>{d.grXtra[k]=0;d.staffXtra[k]=0;});Object.keys(STAFF_BATH_RATES).forEach(k=>d.staffBath[k]=0);return d;};
 const dF=()=>{const o={};Object.keys(FA).forEach(k=>o[k]=0);return o;};
 const cc=(d,fd)=>{if(!d)return null;const dcD=Object.values(d.daycare).reduce((a,v)=>a+(v||0),0),dcR=Object.entries(d.daycare).reduce((a,[k,v])=>a+(v||0)*(DAYCARE_RATES[k]||0),0),bdD=Object.values(d.boarding).reduce((a,v)=>a+(v||0),0),bdR=Object.entries(d.boarding).reduce((a,[k,v])=>a+(v||0)*(BOARDING_RATES[k]||0),0),grD=Object.values(d.grooming).reduce((a,v)=>a+(v||0),0),grR=Object.entries(d.grooming).reduce((a,[k,v])=>a+(v||0)*(GROOMING_RATES[k]||0),0),gxR=Object.entries(d.grXtra).reduce((a,[k,v])=>a+(v||0)*(EXTRA_RATES[k]||0),0),sbD=Object.values(d.staffBath).reduce((a,v)=>a+(v||0),0),sbR=Object.entries(d.staffBath).reduce((a,[k,v])=>a+(v||0)*(STAFF_BATH_RATES[k]||0),0),sxR=Object.entries(d.staffXtra).reduce((a,[k,v])=>a+(v||0)*(EXTRA_RATES[k]||0),0),lb=d.labor||{},hrs=(lb.pp||0)+(lb.bp||0)+(lb.hotel||0)+(lb.reception||0)+(lb.bather||0),lc=hrs*(lb.rate||15),rp=(d.retail?.sales||0)*.28,ec=(d.retail?.expired||0)*.72,rn=rp-ec,vD=d.vetExpense?.daycare||0,vB=d.vetExpense?.boarding||0,vG=d.vetExpense?.grooming||0,rf=d.refunds||0,ds=d.discounts||0,f=fd||{dc:0,bd:0,gr:0},tR=dcR+bdR+grR+gxR+sbR+sxR+rn-vD-vB-vG-rf-ds,tC=lc+f.dc+f.bd+f.gr;return {dcDogs:dcD,dcRev:dcR,bdDogs:bdD,bdRev:bdR,grDogs:grD,grRev:grR,gxRev:gxR,sbDogs:sbD,sbRev:sbR,sxRev:sxR,totalHrs:hrs,laborCost:lc,retailNet:rn,retProfit:rp,expCost:ec,vetDC:vD,vetBD:vB,vetGR:vG,refunds:rf,discounts:ds,totalRev:tR,totalCost:tC,totalDogs:dcD+bdD+grD+sbD,profit:tR-tC,fixedDC:f.dc,fixedBD:f.bd,fixedGR:f.gr,calls:d.leads?.calls||0,callsBooked:d.leads?.callsBooked||0,tours:d.leads?.tours||0,toursBooked:d.leads?.toursBooked||0,compDC:d.complaints?.daycare?.length||0,compBD:d.complaints?.boarding?.length||0,compGR:d.complaints?.grooming?.length||0,fights:d.dogFights?.count||0,star1:d.reviews?.star1||0,star2:d.reviews?.star2||0,star3:d.reviews?.star3||0,star4:d.reviews?.star4||0,star5:d.reviews?.star5||0};};
@@ -174,13 +130,14 @@ const NL=({items,onAdd,onRemove,placeholder})=>{const[t,setT]=useState('');retur
 const NI=({label,value,onChange,prefix,step,min,color:clr,disabled})=>(<div><label style={{fontSize:11,color:C.muted,display:'block',marginBottom:3}}>{label}</label><div style={{display:'flex',alignItems:'center',gap:4}}>{prefix&&<span style={{color:clr||C.muted,fontSize:13,fontWeight:700}}>{prefix}</span>}<input type="number" min={min??0} step={step||1} value={value||''} placeholder="0" disabled={disabled} onChange={e=>onChange(parseFloat(e.target.value)||0)} style={{width:'100%',background:C.input,border:`1px solid ${C.border}`,borderRadius:8,color:C.white,padding:'8px 12px',fontSize:14,outline:'none',boxSizing:'border-box',opacity:disabled?.5:1,cursor:disabled?'not-allowed':'text'}} onFocus={e=>{if(!disabled)e.target.style.borderColor=C.teal;}} onBlur={e=>e.target.style.borderColor=C.border}/></div></div>);
 
 function App(){
-  const[aD,setAD]=useState({});const[fE,setFE]=useState({});const[mo,setMo]=useState(()=>{const n=new Date();return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;});const[dy,setDy]=useState(1);const[vw,setVw]=useState('entry');const[ld,setLd]=useState(true);const[sv,setSv]=useState(false);const[sOK,setSOK]=useState(false);const[dOK,setDOK]=useState(false);const[unlkDlg,setUnlkDlg]=useState(false);const[unlkPw,setUnlkPw]=useState('');const[unlkErr,setUnlkErr]=useState(false);
+  const[aD,setAD]=useState({});const[fE,setFE]=useState({});const[locFA,setLocFA]=useState(FA);const[mo,setMo]=useState(()=>{const n=new Date();return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;});const[dy,setDy]=useState(1);const[vw,setVw]=useState('entry');const[ld,setLd]=useState(true);const[sv,setSv]=useState(false);const[sOK,setSOK]=useState(false);const[dOK,setDOK]=useState(false);const[unlkDlg,setUnlkDlg]=useState(false);const[unlkPw,setUnlkPw]=useState('');const[unlkErr,setUnlkErr]=useState(false);
+  const loadedMonths=useRef(new Set());const ccLoaded=useRef(false);
   const mL=useMemo(()=>{const[y,m]=mo.split('-');return new Date(y,m-1).toLocaleDateString('en-US',{month:'long',year:'numeric'});},[mo]);
   const dim=useMemo(()=>{const[y,m]=mo.split('-');return new Date(y,m,0).getDate();},[mo]);
-  useEffect(()=>{(async()=>{try{const url=localStorage.getItem(URL_KEY);if(url){const r=await fetch(url+'?action=read');const t=await r.text();if(t&&t!=='{}'){const p=JSON.parse(t);setAD(p.days||{});setFE(p.fixed||{});}}else{const r=localStorage.getItem(SK);if(r){const p=JSON.parse(r);setAD(p.days||{});setFE(p.fixed||{});}}}catch(e){console.log('Load error',e);const r=localStorage.getItem(SK);if(r){const p=JSON.parse(r);setAD(p.days||{});setFE(p.fixed||{});}}setLd(false);})();},[]);
-  const save=useCallback(async(nd,nf)=>{setSv(true);const d=nd!==undefined?nd:aD;const f=nf!==undefined?nf:fE;if(nd!==undefined)setAD(d);if(nf!==undefined)setFE(f);const payload={days:d,fixed:f};localStorage.setItem(SK,JSON.stringify(payload));try{const url=localStorage.getItem(URL_KEY);if(url){await fetch(url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({action:'write',data:payload})});}}catch(e){console.log('Sync error',e);}setSv(false);},[aD,fE]);
+  useEffect(()=>{if(loadedMonths.current.has(mo))return;(async()=>{setLd(true);const client=sbClient();if(client){try{const loads=[client.getEntries(mo),client.getFixed(mo)];if(!ccLoaded.current)loads.push(client.getCostCenters());const results=await Promise.all(loads);const[entries,fixedRows]=results;const ccRows=results[2]||[];setAD(prev=>{const next={...prev};entries.forEach(e=>{next[e.entry_date]={...e.data,locked:e.locked};});return next;});if(fixedRows.length>0)setFE(prev=>({...prev,[mo]:fixedRows[0].data}));if(ccRows.length>0){const lf={};ccRows.forEach(r=>{lf[r.expense_key]={label:r.label,dc:+r.dc_pct,bd:+r.bd_pct,gr:+r.gr_pct};});setLocFA(lf);ccLoaded.current=true;}loadedMonths.current.add(mo);}catch(e){console.log('Load error',e);const r=localStorage.getItem(SK);if(r){const p=JSON.parse(r);setAD(p.days||{});setFE(p.fixed||{});}}}else{const r=localStorage.getItem(SK);if(r){const p=JSON.parse(r);setAD(p.days||{});setFE(p.fixed||{});}}setLd(false);})();},[mo]);
+  const save=useCallback(async(nd,nf)=>{setSv(true);const d=nd!==undefined?nd:aD;const f=nf!==undefined?nf:fE;if(nd!==undefined)setAD(d);if(nf!==undefined)setFE(f);localStorage.setItem(SK,JSON.stringify({days:d,fixed:f}));const client=sbClient();if(client){try{if(nd!==undefined){const currentDk=`${mo}-${String(dy).padStart(2,'0')}`;const entry=d[currentDk];if(entry){const{locked,...data}=entry;await client.upsertEntry(currentDk,data,locked||false);}else{await client.deleteEntry(currentDk);}}if(nf!==undefined&&nf[mo]){await client.upsertFixed(mo,nf[mo]);}}catch(e){console.log('Supabase save error',e);}}setSv(false);},[aD,fE,mo,dy]);
   const dk=`${mo}-${String(dy).padStart(2,'0')}`;const dd=aD[dk]||eD();const gMF=useCallback(m=>fE[m]||dF(),[fE]);
-  const fdA=useMemo(()=>{const mf=gMF(mo);let dc=0,bd=0,gr=0;Object.entries(FA).forEach(([k,a])=>{const v=(mf[k]||0)/dim;dc+=v*a.dc;bd+=v*a.bd;gr+=v*a.gr;});return {dc,bd,gr};},[mo,dim,gMF]);
+  const fdA=useMemo(()=>{const mf=gMF(mo);let dc=0,bd=0,gr=0;Object.entries(locFA).forEach(([k,a])=>{const v=(mf[k]||0)/dim;dc+=v*a.dc;bd+=v*a.bd;gr+=v*a.gr;});return {dc,bd,gr};},[mo,dim,gMF,locFA]);
   const uD=(s,k,v)=>{const n={...aD};if(!n[dk])n[dk]=eD();n[dk]={...n[dk],[s]:{...n[dk][s],[k]:v}};save(n);};
   const uR=(k,v)=>{const n={...aD};if(!n[dk])n[dk]=eD();n[dk]={...n[dk],[k]:v};save(n);};
   const uN=(s,k,v)=>{const n={...aD};if(!n[dk])n[dk]=eD();n[dk]={...n[dk],[s]:{...(n[dk][s]||{}),[k]:v}};save(n);};
@@ -196,7 +153,7 @@ function App(){
   const cpP=()=>{if(dy<=1)return;const pk=`${mo}-${String(dy-1).padStart(2,'0')}`;if(aD[pk])save({...aD,[dk]:JSON.parse(JSON.stringify(aD[pk]))});};
   const uL=(k,v)=>{const n={...aD};if(!n[dk])n[dk]=eD();n[dk]={...n[dk],labor:{...n[dk].labor,[k]:v}};save(n);};
   const tm=cc(dd,fdA);
-  const mDt=useMemo(()=>{const mf=gMF(mo);let dc=0,bd=0,gr=0;Object.entries(FA).forEach(([k,a])=>{const v=(mf[k]||0)/dim;dc+=v*a.dc;bd+=v*a.bd;gr+=v*a.gr;});const fd={dc,bd,gr};return Array.from({length:dim},(_,i)=>{const k2=`${mo}-${String(i+1).padStart(2,'0')}`;const m=cc(aD[k2],fd);return {day:i+1,...(m||{dcDogs:0,dcRev:0,bdDogs:0,bdRev:0,grDogs:0,grRev:0,gxRev:0,sbDogs:0,sbRev:0,sxRev:0,totalHrs:0,laborCost:0,totalRev:0,totalCost:0,totalDogs:0,profit:0,retailNet:0,vetDC:0,vetBD:0,vetGR:0,refunds:0,discounts:0,calls:0,callsBooked:0,tours:0,toursBooked:0,compDC:0,compBD:0,compGR:0,fights:0,star1:0,star2:0,star3:0,star4:0,star5:0,fixedDC:0,fixedBD:0,fixedGR:0})};});},[aD,mo,dim,gMF]);
+  const mDt=useMemo(()=>{const mf=gMF(mo);let dc=0,bd=0,gr=0;Object.entries(locFA).forEach(([k,a])=>{const v=(mf[k]||0)/dim;dc+=v*a.dc;bd+=v*a.bd;gr+=v*a.gr;});const fd={dc,bd,gr};return Array.from({length:dim},(_,i)=>{const k2=`${mo}-${String(i+1).padStart(2,'0')}`;const m=cc(aD[k2],fd);return {day:i+1,...(m||{dcDogs:0,dcRev:0,bdDogs:0,bdRev:0,grDogs:0,grRev:0,gxRev:0,sbDogs:0,sbRev:0,sxRev:0,totalHrs:0,laborCost:0,totalRev:0,totalCost:0,totalDogs:0,profit:0,retailNet:0,vetDC:0,vetBD:0,vetGR:0,refunds:0,discounts:0,calls:0,callsBooked:0,tours:0,toursBooked:0,compDC:0,compBD:0,compGR:0,fights:0,star1:0,star2:0,star3:0,star4:0,star5:0,fixedDC:0,fixedBD:0,fixedGR:0})};});},[aD,mo,dim,gMF,locFA]);
   const mt=useMemo(()=>{const t={rev:0,labor:0,profit:0,dogs:0,dcRev:0,bdRev:0,grRev:0,gxRev:0,sbRev:0,sxRev:0,dcDogs:0,bdDogs:0,grDogs:0,sbDogs:0,hrs:0,days:0,retailNet:0,refunds:0,discounts:0,vetTotal:0,calls:0,callsBooked:0,tours:0,toursBooked:0,compDC:0,compBD:0,compGR:0,fights:0,star1:0,star2:0,star3:0,star4:0,star5:0,totalCost:0,fixedTotal:0};mDt.forEach(d=>{if(d.totalRev!==0||d.totalDogs>0||d.laborCost>0)t.days++;t.rev+=d.totalRev;t.labor+=d.laborCost;t.profit+=d.profit;t.dogs+=d.totalDogs;t.dcRev+=d.dcRev;t.bdRev+=d.bdRev;t.grRev+=d.grRev;t.gxRev+=d.gxRev;t.sbRev+=d.sbRev;t.sxRev+=d.sxRev;t.dcDogs+=d.dcDogs;t.bdDogs+=d.bdDogs;t.grDogs+=d.grDogs;t.sbDogs+=d.sbDogs;t.hrs+=d.totalHrs;t.retailNet+=d.retailNet||0;t.refunds+=d.refunds||0;t.discounts+=d.discounts||0;t.vetTotal+=(d.vetDC||0)+(d.vetBD||0)+(d.vetGR||0);t.calls+=d.calls||0;t.callsBooked+=d.callsBooked||0;t.tours+=d.tours||0;t.toursBooked+=d.toursBooked||0;t.compDC+=d.compDC||0;t.compBD+=d.compBD||0;t.compGR+=d.compGR||0;t.fights+=d.fights||0;t.star1+=d.star1||0;t.star2+=d.star2||0;t.star3+=d.star3||0;t.star4+=d.star4||0;t.star5+=d.star5||0;t.totalCost+=d.totalCost||0;t.fixedTotal+=(d.fixedDC||0)+(d.fixedBD||0)+(d.fixedGR||0);});return t;},[mDt]);
   const cP=useMemo(()=>{let c=0;return mDt.map(d=>{c+=d.profit;return {day:d.day,cum:c};});},[mDt]);
   const aDs=mDt.filter(d=>d.totalRev!==0||d.totalDogs>0||d.laborCost>0);
@@ -247,7 +204,7 @@ function App(){
       <Sec title="Veterinary Expenses" icon="🏥"><div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:14}}><NI label="Daycare Vet ($)" value={dd.vetExpense?.daycare} onChange={v=>uN('vetExpense','daycare',v)} prefix="$" color={C.coral} disabled={dd.locked}/><NI label="Boarding Vet ($)" value={dd.vetExpense?.boarding} onChange={v=>uN('vetExpense','boarding',v)} prefix="$" color={C.coral} disabled={dd.locked}/><NI label="Grooming Vet ($)" value={dd.vetExpense?.grooming} onChange={v=>uN('vetExpense','grooming',v)} prefix="$" color={C.coral} disabled={dd.locked}/></div><div style={{fontSize:11,color:C.muted,marginTop:8}}>Subtracted from each service's revenue.</div></Sec>
     </>)}
     {vw==='staffing'&&(!sOK?<Lock onUnlock={()=>setSOK(true)} label="Staffing — Protected"/>:(<><DSel/><h2 style={{fontSize:18,fontWeight:800,margin:'0 0 14px'}}>{mL} — Day {dy} — Staffing</h2><CB><div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:14}}>{[['pp','Play Pen (PP)'],['bp','Back Pack (BP)'],['hotel','Hotel'],['reception','Reception'],['bather','Bather'],['rate','Hourly Rate ($)']].map(([k,l])=>(<NI key={k} label={l} value={dd.labor?.[k]} step={k==='rate'?.5:.01} onChange={v=>uL(k,v)} prefix={k==='rate'?'$':null}/>))}</div>{tm&&<div style={{marginTop:14,display:'flex',gap:20,fontSize:13,color:C.muted}}><span>Total Hours: <b style={{color:C.white}}>{tm.totalHrs.toFixed(1)}</b></span><span>Labor Cost: <b style={{color:C.coral}}>{fmt2(tm.laborCost)}</b></span></div>}</CB><CB title="Monthly Staff Hours" style={{marginTop:16}}><ResponsiveContainer width="100%" height={260}><BarChart data={mDt.filter(d=>d.totalHrs>0)}><CartesianGrid strokeDasharray="3 3" stroke={C.border}/><XAxis dataKey="day" stroke={C.muted} fontSize={11}/><YAxis stroke={C.muted} fontSize={11}/><Tooltip content={CT}/><Bar dataKey="totalHrs" name="Hours" fill={C.sky} radius={[4,4,0,0]}/></BarChart></ResponsiveContainer></CB></>))}
-    {vw==='expenses'&&(!sOK?<Lock onUnlock={()=>setSOK(true)} label="Fixed Expenses — Protected"/>:(<><h2 style={{fontSize:18,fontWeight:800,margin:'0 0 14px'}}>{mL} — Monthly Fixed Expenses</h2><CB><div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>{Object.entries(FA).map(([k,a])=>(<div key={k}><label style={{fontSize:12,color:C.muted,display:'block',marginBottom:3}}>{a.label}<span style={{fontSize:10,color:C.border,marginLeft:6}}>DC {(a.dc*100).toFixed(0)}% / BD {(a.bd*100).toFixed(0)}% / GR {(a.gr*100).toFixed(0)}%</span></label><div style={{display:'flex',alignItems:'center',gap:4}}><span style={{color:C.muted,fontSize:13,fontWeight:700}}>$</span><input type="number" min="0" value={gMF(mo)[k]||''} placeholder="0" onChange={e=>uFx(k,parseFloat(e.target.value)||0)} style={{width:'100%',background:C.input,border:`1px solid ${C.border}`,borderRadius:8,color:C.white,padding:'8px 12px',fontSize:14,outline:'none',boxSizing:'border-box'}} onFocus={e=>e.target.style.borderColor=C.teal} onBlur={e=>e.target.style.borderColor=C.border}/></div></div>))}</div><div style={{marginTop:20,borderTop:`1px solid ${C.border}`,paddingTop:14}}><div style={{fontSize:13,fontWeight:700,color:C.white,marginBottom:8}}>Monthly Allocation Summary</div><div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:12}}>{[['Daycare','dc',C.sky],['Boarding','bd',C.teal],['Grooming','gr',C.purple]].map(([l,key,clr])=>{const mf=gMF(mo);const total=Object.entries(FA).reduce((a,[k,al])=>a+(mf[k]||0)*al[key],0);return <div key={key} style={{background:C.navy,borderRadius:10,padding:12,textAlign:'center'}}><div style={{fontSize:10,color:C.muted,textTransform:'uppercase',letterSpacing:1}}>{l}</div><div style={{fontSize:22,fontWeight:800,color:clr}}>{fmt(total)}</div><div style={{fontSize:11,color:C.muted}}>{fmt2(total/dim)}/day</div></div>;})}</div></div></CB></>))}
+    {vw==='expenses'&&(!sOK?<Lock onUnlock={()=>setSOK(true)} label="Fixed Expenses — Protected"/>:(<><h2 style={{fontSize:18,fontWeight:800,margin:'0 0 14px'}}>{mL} — Monthly Fixed Expenses</h2><CB><div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>{Object.entries(locFA).map(([k,a])=>(<div key={k}><label style={{fontSize:12,color:C.muted,display:'block',marginBottom:3}}>{a.label}<span style={{fontSize:10,color:C.border,marginLeft:6}}>DC {(a.dc*100).toFixed(0)}% / BD {(a.bd*100).toFixed(0)}% / GR {(a.gr*100).toFixed(0)}%</span></label><div style={{display:'flex',alignItems:'center',gap:4}}><span style={{color:C.muted,fontSize:13,fontWeight:700}}>$</span><input type="number" min="0" value={gMF(mo)[k]||''} placeholder="0" onChange={e=>uFx(k,parseFloat(e.target.value)||0)} style={{width:'100%',background:C.input,border:`1px solid ${C.border}`,borderRadius:8,color:C.white,padding:'8px 12px',fontSize:14,outline:'none',boxSizing:'border-box'}} onFocus={e=>e.target.style.borderColor=C.teal} onBlur={e=>e.target.style.borderColor=C.border}/></div></div>))}</div><div style={{marginTop:20,borderTop:`1px solid ${C.border}`,paddingTop:14}}><div style={{fontSize:13,fontWeight:700,color:C.white,marginBottom:8}}>Monthly Allocation Summary</div><div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:12}}>{[['Daycare','dc',C.sky],['Boarding','bd',C.teal],['Grooming','gr',C.purple]].map(([l,key,clr])=>{const mf=gMF(mo);const total=Object.entries(locFA).reduce((a,[k,al])=>a+(mf[k]||0)*al[key],0);return <div key={key} style={{background:C.navy,borderRadius:10,padding:12,textAlign:'center'}}><div style={{fontSize:10,color:C.muted,textTransform:'uppercase',letterSpacing:1}}>{l}</div><div style={{fontSize:22,fontWeight:800,color:clr}}>{fmt(total)}</div><div style={{fontSize:11,color:C.muted}}>{fmt2(total/dim)}/day</div></div>;})}</div></div></CB></>))}
     {vw==='dashboard'&&(!dOK?<Lock onUnlock={()=>setDOK(true)} label="Dashboard — Owner Access"/>:(<><h2 style={{fontSize:18,fontWeight:800,margin:'0 0 14px'}}>{mL} — Dashboard</h2>
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(155px,1fr))',gap:10,marginBottom:20}}><KP label="Total Revenue" value={fmt(mt.rev)} sub={`${mt.days} days`}/><KP label="Total Costs" value={fmt(mt.totalCost)} color={C.coral} sub={`Labor ${fmt(mt.labor)} + Fixed ${fmt(mt.fixedTotal)}`}/><KP label="Gross Profit" value={fmt(mt.profit)} color={mt.profit>=0?C.green:C.coral} sub={mt.rev?pct(mt.profit/mt.rev)+' margin':''}/><KP label="Avg Daily Rev" value={mt.days?fmt(mt.rev/mt.days):'—'} color={C.sky}/><KP label="Total Dogs" value={mt.dogs} color={C.amber} sub={mt.days?`${(mt.dogs/mt.days).toFixed(0)}/day`:''}/><KP label="Retail (Net)" value={fmt2(mt.retailNet)} color={C.pink}/><KP label="Refunds" value={fmt2(mt.refunds)} color={C.coral}/><KP label="Discounts" value={fmt2(mt.discounts)} color={C.orange}/></div>
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(155px,1fr))',gap:10,marginBottom:20}}><KP label="New Client Calls" value={mt.calls} color={C.sky} sub={`${mt.callsBooked} booked`}/><KP label="Call Conversion" value={mt.calls?pct(mt.callsBooked/mt.calls):'—'} color={C.teal}/><KP label="New Client Tours" value={mt.tours} color={C.purple} sub={`${mt.toursBooked} booked`}/><KP label="Tour Conversion" value={mt.tours?pct(mt.toursBooked/mt.tours):'—'} color={C.teal}/><KP label="Total New Clients" value={mt.callsBooked+mt.toursBooked} color={C.green} sub={`From ${mt.calls+mt.tours} leads`}/><KP label="Total Reviews" value={mt.star1+mt.star2+mt.star3+mt.star4+mt.star5} color={C.amber} sub={`Avg ${(mt.star1+mt.star2+mt.star3+mt.star4+mt.star5)?(((mt.star1*1+mt.star2*2+mt.star3*3+mt.star4*4+mt.star5*5)/(mt.star1+mt.star2+mt.star3+mt.star4+mt.star5)).toFixed(1)):'0'} stars`}/><KP label="5-Star Reviews" value={mt.star5} color={C.green} sub={`${mt.star4} four-star`}/><KP label="1-2 Star Reviews" value={mt.star1+mt.star2} color={C.coral} sub={`${mt.star3} three-star`}/><KP label="Vet Expenses" value={fmt2(mt.vetTotal)} color={C.coral}/></div>
@@ -264,9 +221,9 @@ function App(){
 
 
 // ── WRAPPER ──
-function Wrapper() {
-  const hasUrl = !!localStorage.getItem(URL_KEY);
-  if (!hasUrl) return React.createElement(SetupScreen);
+function Wrapper(){
+  const hasConfig=!!localStorage.getItem(SB_URL_KEY)&&!!localStorage.getItem(SB_KEY_KEY);
+  if(!hasConfig)return React.createElement(SetupScreen);
   return React.createElement(App);
 }
 
